@@ -23,16 +23,12 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Ninja and Latest LLVM
-        run: |
-          choco install ninja -y
-          # Install the latest LLVM which has the patched Windows ASan interceptors
-          choco install llvm -y
-          
-      # Add this step so CMake uses the newly installed LLVM instead of the older built-in one
-      - name: Add LLVM to PATH
-        shell: pwsh
-        run: echo "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+      # Reverted back to just Ninja. No Chocolatey LLVM!
+      - name: Install Ninja
+        run: choco install ninja -y
+
+      - name: Setup MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup Sanitizer Environment
         shell: pwsh
@@ -43,8 +39,8 @@ jobs:
           if (Test-Path $sanitizer_lib_dir) {
             Write-Host "Found Clang Sanitizer libs at: $sanitizer_lib_dir"
             echo "$sanitizer_lib_dir" >> $env:GITHUB_PATH
+            # This allows the linker to find the .lib files during compilation
             echo "LIB=$sanitizer_lib_dir;$env:LIB" >> $env:GITHUB_ENV
-            echo "ASAN_DLL_DIR=$sanitizer_lib_dir" >> $env:GITHUB_ENV
           } else {
             Write-Error "Could not find Clang Sanitizer libs at $sanitizer_lib_dir!"
             exit 1
@@ -70,7 +66,6 @@ jobs:
         env:
           ASAN_OPTIONS: "detect_leaks=0"
           UBSAN_OPTIONS: "halt_on_error=0"
-        # Removed the non-existent 'dxil' target
         run: cmake --build build --config Release --target dxcompiler --target dxc --parallel 2
 
       - name: Download Official DXIL.dll
@@ -79,30 +74,32 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           Write-Host "Fetching latest DXC release from GitHub to extract dxil.dll..."
-          
-          # Using GITHUB_TOKEN to prevent API Rate-Limiting issues on the runners
           $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN" }
           $release = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/DirectXShaderCompiler/releases/latest" -Headers $headers
           $asset = $release.assets | Where-Object { $_.name -match "dxc_.*\.zip" } | Select-Object -First 1
           
           if ($asset) {
-            Write-Host "Downloading $($asset.name)..."
             Invoke-WebRequest -Uri $asset.browser_download_url -OutFile "dxc_latest.zip"
-            
-            Write-Host "Extracting..."
             Expand-Archive -Path "dxc_latest.zip" -DestinationPath "dxc_latest" -Force
-            
-            Write-Host "Copying dxil.dll to build/bin..."
             Copy-Item -Path "dxc_latest\bin\x64\dxil.dll" -Destination "build\bin\" -Force
           } else {
             Write-Error "Could not find the DXC release zip!"
             exit 1
           }
 
-      - name: Bundle ASan DLL
+      - name: Bundle Patched MSVC ASan DLL
         shell: pwsh
         run: |
-          Copy-Item -Path "$env:ASAN_DLL_DIR\clang_rt.asan_dynamic-x86_64.dll" -Destination "build\bin\"
+          # Instead of the buggy LLVM DLL, we grab the official patched one from Visual Studio!
+          $msvc_asan_dll = Join-Path $env:VCToolsInstallDir "bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll"
+          
+          if (Test-Path $msvc_asan_dll) {
+            Write-Host "Found MSVC Patched ASan DLL: $msvc_asan_dll"
+            Copy-Item -Path $msvc_asan_dll -Destination "build\bin\" -Force
+          } else {
+            Write-Error "Could not find MSVC ASan DLL!"
+            exit 1
+          }
 
       - name: Upload DXC Artifacts
         uses: actions/upload-artifact@v4
