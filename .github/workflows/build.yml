@@ -23,9 +23,15 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Reverted back to just Ninja. No Chocolatey LLVM!
-      - name: Install Ninja
-        run: choco install ninja -y
+      - name: Install Ninja and LLVM 18
+        run: |
+          choco install ninja -y
+          # Installing LLVM 18 fixes the Windows 11 interception_win crash natively
+          choco install llvm --version=18.1.8 -y
+
+      - name: Add LLVM to PATH
+        shell: pwsh
+        run: echo "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
 
       - name: Setup MSVC Developer Command Prompt
         uses: ilammy/msvc-dev-cmd@v1
@@ -38,15 +44,28 @@ jobs:
           
           if (Test-Path $sanitizer_lib_dir) {
             Write-Host "Found Clang Sanitizer libs at: $sanitizer_lib_dir"
+            
+            # Convert to a short path (e.g. C:\PROGRA~1\...) to eliminate spaces for CMake
+            $fso = New-Object -ComObject Scripting.FileSystemObject
+            $short_path = $fso.GetFolder($sanitizer_lib_dir).ShortPath
+            $cmake_lib_dir = $short_path -replace '\\', '/'
+            
+            # Save the clean path for CMake linker flags
+            echo "ASAN_LIB_DIR=$cmake_lib_dir" >> $env:GITHUB_ENV
+            
+            # Save original path for the bundling step later
+            echo "ASAN_DLL_DIR=$sanitizer_lib_dir" >> $env:GITHUB_ENV
+            
+            # Add to PATH so tools like llvm-tblgen can execute during the build
             echo "$sanitizer_lib_dir" >> $env:GITHUB_PATH
-            # This allows the linker to find the .lib files during compilation
-            echo "LIB=$sanitizer_lib_dir;$env:LIB" >> $env:GITHUB_ENV
           } else {
             Write-Error "Could not find Clang Sanitizer libs at $sanitizer_lib_dir!"
             exit 1
           }
 
       - name: Configure CMake
+        # Notice we are now explicitly passing /MD (Dynamic CRT) which is required by the dynamic ASan DLL!
+        # We also safely pass /libpath: to the linker without touching the global SDK environment variables.
         run: |
           cmake -B build --fresh `
             -C cmake/caches/PredefinedParams.cmake `
@@ -56,10 +75,10 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang-cl `
             -DLLVM_ENABLE_WERROR=OFF `
             -DSPIRV_WERROR=OFF `
-            -DCMAKE_C_FLAGS_RELEASE="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /O2 /DNDEBUG" `
-            -DCMAKE_CXX_FLAGS_RELEASE="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /O2 /DNDEBUG" `
-            -DCMAKE_EXE_LINKER_FLAGS_RELEASE="clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
-            -DCMAKE_SHARED_LINKER_FLAGS_RELEASE="clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
+            -DCMAKE_C_FLAGS_RELEASE="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /O2 /MD /DNDEBUG" `
+            -DCMAKE_CXX_FLAGS_RELEASE="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /O2 /MD /DNDEBUG" `
+            -DCMAKE_EXE_LINKER_FLAGS_RELEASE="/libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
+            -DCMAKE_SHARED_LINKER_FLAGS_RELEASE="/libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
             -DLLVM_PARALLEL_LINK_JOBS=1
 
       - name: Build DXCompiler and DXC
@@ -87,19 +106,11 @@ jobs:
             exit 1
           }
 
-      - name: Bundle Patched MSVC ASan DLL
+      - name: Bundle LLVM ASan DLL
         shell: pwsh
         run: |
-          # Instead of the buggy LLVM DLL, we grab the official patched one from Visual Studio!
-          $msvc_asan_dll = Join-Path $env:VCToolsInstallDir "bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll"
-          
-          if (Test-Path $msvc_asan_dll) {
-            Write-Host "Found MSVC Patched ASan DLL: $msvc_asan_dll"
-            Copy-Item -Path $msvc_asan_dll -Destination "build\bin\" -Force
-          } else {
-            Write-Error "Could not find MSVC ASan DLL!"
-            exit 1
-          }
+          # Copy the matching ASan runtime from the LLVM 18 installation
+          Copy-Item -Path "$env:ASAN_DLL_DIR\clang_rt.asan_dynamic-x86_64.dll" -Destination "build\bin\" -Force
 
       - name: Upload DXC Artifacts
         uses: actions/upload-artifact@v4
