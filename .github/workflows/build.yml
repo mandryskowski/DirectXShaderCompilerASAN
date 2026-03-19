@@ -23,11 +23,10 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Ninja and LLVM 18
+      - name: Install/Upgrade Dependencies
         run: |
-          choco install ninja -y
-          # Installing LLVM 18 fixes the Windows 11 interception_win crash natively
-          choco install llvm --version=18.1.8 -y
+          choco upgrade ninja -y
+          choco upgrade llvm -y
 
       - name: Add LLVM to PATH
         shell: pwsh
@@ -64,8 +63,6 @@ jobs:
           }
 
       - name: Configure CMake
-        # Notice we are now explicitly passing /MD (Dynamic CRT) which is required by the dynamic ASan DLL!
-        # We also safely pass /libpath: to the linker without touching the global SDK environment variables.
         run: |
           cmake -B build --fresh `
             -C cmake/caches/PredefinedParams.cmake `
@@ -109,7 +106,7 @@ jobs:
       - name: Bundle LLVM ASan DLL
         shell: pwsh
         run: |
-          # Copy the matching ASan runtime from the LLVM 18 installation
+          # Copy the matching ASan runtime from the LLVM installation
           Copy-Item -Path "$env:ASAN_DLL_DIR\clang_rt.asan_dynamic-x86_64.dll" -Destination "build\bin\" -Force
 
       - name: Upload DXC Artifacts
