@@ -44,18 +44,14 @@ jobs:
           if (Test-Path $sanitizer_lib_dir) {
             Write-Host "Found Clang Sanitizer libs at: $sanitizer_lib_dir"
             
-            # Convert to a short path (e.g. C:\PROGRA~1\...) to eliminate spaces for CMake
             $fso = New-Object -ComObject Scripting.FileSystemObject
             $short_path = $fso.GetFolder($sanitizer_lib_dir).ShortPath
             $cmake_lib_dir = $short_path -replace '\\', '/'
             
-            # Save the clean path for CMake linker flags
             echo "ASAN_LIB_DIR=$cmake_lib_dir" >> $env:GITHUB_ENV
             
-            # Save original path for the bundling step later
             echo "ASAN_DLL_DIR=$sanitizer_lib_dir" >> $env:GITHUB_ENV
             
-            # Add to PATH so tools like llvm-tblgen can execute during the build
             echo "$sanitizer_lib_dir" >> $env:GITHUB_PATH
           } else {
             Write-Error "Could not find Clang Sanitizer libs at $sanitizer_lib_dir!"
@@ -106,7 +102,6 @@ jobs:
       - name: Bundle LLVM ASan DLL
         shell: pwsh
         run: |
-          # Copy the matching ASan runtime from the LLVM installation
           Copy-Item -Path "$env:ASAN_DLL_DIR\clang_rt.asan_dynamic-x86_64.dll" -Destination "build\bin\" -Force
 
       - name: Upload DXC Artifacts
