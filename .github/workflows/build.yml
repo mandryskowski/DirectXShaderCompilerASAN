@@ -70,12 +70,14 @@ jobs:
             -DCMAKE_CXX_COMPILER=clang-cl `
             -DLLVM_ENABLE_WERROR=OFF `
             -DSPIRV_WERROR=OFF `
+            -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreadedDLL" `
             -DCMAKE_C_FLAGS="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /Z7" `
             -DCMAKE_CXX_FLAGS="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /Z7" `
             -DCMAKE_C_FLAGS_RELEASE="/O2 /MD /DNDEBUG" `
             -DCMAKE_CXX_FLAGS_RELEASE="/O2 /MD /DNDEBUG" `
-            -DCMAKE_C_FLAGS_DEBUG="/Od /MDd" `
-            -DCMAKE_CXX_FLAGS_DEBUG="/Od /MDd" `
+            -DCMAKE_C_FLAGS_DEBUG="/Od /MD" `
+            -DCMAKE_CXX_FLAGS_DEBUG="/Od /MD" `
             -DCMAKE_EXE_LINKER_FLAGS="/DEBUG /libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
             -DCMAKE_SHARED_LINKER_FLAGS="/DEBUG /libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
             -DLLVM_PARALLEL_LINK_JOBS=1
