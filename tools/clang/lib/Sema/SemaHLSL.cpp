@@ -200,10 +200,15 @@ enum ArBasicKind {
   AR_OBJECT_VK_SPV_INTRINSIC_TYPE,
   AR_OBJECT_VK_SPV_INTRINSIC_RESULT_ID,
   AR_OBJECT_VK_BUFFER_POINTER,
+  AR_OBJECT_VK_SAMPLED_TEXTURE1D,
+  AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY,
   AR_OBJECT_VK_SAMPLED_TEXTURE2D,
   AR_OBJECT_VK_SAMPLED_TEXTURE2D_ARRAY,
   AR_OBJECT_VK_SAMPLED_TEXTURE2DMS,
   AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY,
+  AR_OBJECT_VK_SAMPLED_TEXTURECUBE,
+  AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY,
+  AR_OBJECT_VK_SAMPLED_TEXTURE3D,
 #endif // ENABLE_SPIRV_CODEGEN
   // SPIRV change ends
 
@@ -564,10 +569,15 @@ const UINT g_uBasicKindProps[] = {
     BPROP_OBJECT, // AR_OBJECT_VK_SPV_INTRINSIC_TYPE use recordType
     BPROP_OBJECT, // AR_OBJECT_VK_SPV_INTRINSIC_RESULT_ID use recordType
     BPROP_OBJECT, // AR_OBJECT_VK_BUFFER_POINTER use recordType
+    BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURE1D
+    BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY
     BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURE2D
     BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURE2D_ARRAY
     BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURE2DMS
     BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY
+    BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURECUBE
+    BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY
+    BPROP_OBJECT | BPROP_RBUFFER, // AR_OBJECT_VK_SAMPLED_TEXTURE3D
 #endif            // ENABLE_SPIRV_CODEGEN
     // SPIRV change ends
 
@@ -1276,6 +1286,10 @@ static const ArBasicKind g_LinAlgMatrixCT[] = {AR_OBJECT_LINALG_MATRIX,
 #ifdef ENABLE_SPIRV_CODEGEN
 static const ArBasicKind g_VKBufferPointerCT[] = {AR_OBJECT_VK_BUFFER_POINTER,
                                                   AR_BASIC_UNKNOWN};
+static const ArBasicKind g_VKSampledTexture1DCT[] = {
+    AR_OBJECT_VK_SAMPLED_TEXTURE1D, AR_BASIC_UNKNOWN};
+static const ArBasicKind g_VKSampledTexture1DArrayCT[] = {
+    AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY, AR_BASIC_UNKNOWN};
 static const ArBasicKind g_VKSampledTexture2DCT[] = {
     AR_OBJECT_VK_SAMPLED_TEXTURE2D, AR_BASIC_UNKNOWN};
 static const ArBasicKind g_VKSampledTexture2DArrayCT[] = {
@@ -1284,6 +1298,12 @@ static const ArBasicKind g_VKSampledTexture2DMSCT[] = {
     AR_OBJECT_VK_SAMPLED_TEXTURE2DMS, AR_BASIC_UNKNOWN};
 static const ArBasicKind g_VKSampledTexture2DMSArrayCT[] = {
     AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY, AR_BASIC_UNKNOWN};
+static const ArBasicKind g_VKSampledTextureCUBECT[] = {
+    AR_OBJECT_VK_SAMPLED_TEXTURECUBE, AR_BASIC_UNKNOWN};
+static const ArBasicKind g_VKSampledTextureCUBEArrayCT[] = {
+    AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY, AR_BASIC_UNKNOWN};
+static const ArBasicKind g_VKSampledTexture3DCT[] = {
+    AR_OBJECT_VK_SAMPLED_TEXTURE3D, AR_BASIC_UNKNOWN};
 #endif
 
 // Basic kinds, indexed by a LEGAL_INTRINSIC_COMPTYPES value.
@@ -1347,10 +1367,15 @@ const ArBasicKind *g_LegalIntrinsicCompTypes[] = {
     g_BuiltInTrianglePositionsCT, // LICOMPTYPE_BUILTIN_TRIANGLE_POSITIONS
 #ifdef ENABLE_SPIRV_CODEGEN
     g_VKBufferPointerCT,           // LICOMPTYPE_VK_BUFFER_POINTER
+    g_VKSampledTexture1DCT,        // LICOMPTYPE_VK_SAMPLED_TEXTURE1D
+    g_VKSampledTexture1DArrayCT,   // LICOMPTYPE_VK_SAMPLED_TEXTURE1D_ARRAY
     g_VKSampledTexture2DCT,        // LICOMPTYPE_VK_SAMPLED_TEXTURE2D
     g_VKSampledTexture2DArrayCT,   // LICOMPTYPE_VK_SAMPLED_TEXTURE2D_ARRAY
     g_VKSampledTexture2DMSCT,      // LICOMPTYPE_VK_SAMPLED_TEXTURE2DMS
     g_VKSampledTexture2DMSArrayCT, // LICOMPTYPE_VK_SAMPLED_TEXTURE2DMS_ARRAY
+    g_VKSampledTextureCUBECT,      // LICOMPTYPE_VK_SAMPLED_TEXTURECUBE
+    g_VKSampledTextureCUBEArrayCT, // LICOMPTYPE_VK_SAMPLED_TEXTURECUBE_ARRAY
+    g_VKSampledTexture3DCT,        // LICOMPTYPE_VK_SAMPLED_TEXTURE3D
 #endif
 };
 static_assert(
@@ -1410,9 +1435,11 @@ static const ArBasicKind g_ArBasicKindsAsTypes[] = {
     AR_OBJECT_VK_SPIRV_TYPE, AR_OBJECT_VK_SPIRV_OPAQUE_TYPE,
     AR_OBJECT_VK_INTEGRAL_CONSTANT, AR_OBJECT_VK_LITERAL,
     AR_OBJECT_VK_SPV_INTRINSIC_TYPE, AR_OBJECT_VK_SPV_INTRINSIC_RESULT_ID,
-    AR_OBJECT_VK_BUFFER_POINTER, AR_OBJECT_VK_SAMPLED_TEXTURE2D,
+    AR_OBJECT_VK_BUFFER_POINTER, AR_OBJECT_VK_SAMPLED_TEXTURE1D,
+    AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY, AR_OBJECT_VK_SAMPLED_TEXTURE2D,
     AR_OBJECT_VK_SAMPLED_TEXTURE2D_ARRAY, AR_OBJECT_VK_SAMPLED_TEXTURE2DMS,
-    AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY,
+    AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY, AR_OBJECT_VK_SAMPLED_TEXTURECUBE,
+    AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY, AR_OBJECT_VK_SAMPLED_TEXTURE3D,
 #endif // ENABLE_SPIRV_CODEGEN
     // SPIRV change ends
 
@@ -1524,10 +1551,15 @@ static const uint8_t g_ArBasicKindsTemplateCount[] = {
     1, // AR_OBJECT_VK_SPV_INTRINSIC_TYPE
     1, // AR_OBJECT_VK_SPV_INTRINSIC_RESULT_ID
     2, // AR_OBJECT_VK_BUFFER_POINTER
+    1, // AR_OBJECT_VK_SAMPLED_TEXTURE1D
+    1, // AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY
     1, // AR_OBJECT_VK_SAMPLED_TEXTURE2D
     1, // AR_OBJECT_VK_SAMPLED_TEXTURE2D_ARRAY
     1, // AR_OBJECT_VK_SAMPLED_TEXTURE2DMS
     1, // AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY
+    1, // AR_OBJECT_VK_SAMPLED_TEXTURECUBE
+    1, // AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY
+    1, // AR_OBJECT_VK_SAMPLED_TEXTURE3D
 #endif // ENABLE_SPIRV_CODEGEN
     // SPIRV change ends
 
@@ -1681,10 +1713,15 @@ static const SubscriptOperatorRecord g_ArBasicKindsSubscripts[] = {
     {0, MipsFalse, SampleFalse}, // AR_OBJECT_VK_SPV_INTRINSIC_TYPE
     {0, MipsFalse, SampleFalse}, // AR_OBJECT_VK_SPV_INTRINSIC_RESULT_ID
     {0, MipsFalse, SampleFalse}, // AR_OBJECT_VK_BUFFER_POINTER
+    {1, MipsTrue, SampleFalse},  // AR_OBJECT_VK_SAMPLED_TEXTURE1D
+    {2, MipsTrue, SampleFalse},  // AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY
     {2, MipsTrue, SampleFalse},  // AR_OBJECT_VK_SAMPLED_TEXTURE2D
     {3, MipsTrue, SampleFalse},  // AR_OBJECT_VK_SAMPLED_TEXTURE2D_ARRAY
     {2, MipsFalse, SampleTrue},  // AR_OBJECT_VK_SAMPLED_TEXTURE2DMS
     {3, MipsFalse, SampleTrue},  // AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY
+    {0, MipsFalse, SampleFalse}, // AR_OBJECT_VK_SAMPLED_TEXTURECUBE
+    {0, MipsFalse, SampleFalse}, // AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY
+    {3, MipsTrue, SampleFalse},  // AR_OBJECT_VK_SAMPLED_TEXTURE3D
 #endif                           // ENABLE_SPIRV_CODEGEN
     // SPIRV change ends
 
@@ -1854,10 +1891,15 @@ static const char *g_ArBasicTypeNames[] = {
     "ext_type",
     "ext_result_id",
     "BufferPointer",
+    "SampledTexture1D",
+    "SampledTexture1DArray",
     "SampledTexture2D",
     "SampledTexture2DArray",
     "SampledTexture2DMS",
     "SampledTexture2DMSArray",
+    "SampledTextureCUBE",
+    "SampledTextureCUBEArray",
+    "SampledTexture3D",
 #endif // ENABLE_SPIRV_CODEGEN
     // SPIRV change ends
 
@@ -2514,6 +2556,14 @@ static void GetIntrinsicMethods(ArBasicKind kind,
     *intrinsicCount = _countof(g_RayQueryMethods);
     break;
 #ifdef ENABLE_SPIRV_CODEGEN
+  case AR_OBJECT_VK_SAMPLED_TEXTURE1D:
+    *intrinsics = g_VkSampledTexture1DMethods;
+    *intrinsicCount = _countof(g_VkSampledTexture1DMethods);
+    break;
+  case AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY:
+    *intrinsics = g_VkSampledTexture1DArrayMethods;
+    *intrinsicCount = _countof(g_VkSampledTexture1DArrayMethods);
+    break;
   case AR_OBJECT_VK_SAMPLED_TEXTURE2D:
     *intrinsics = g_VkSampledTexture2DMethods;
     *intrinsicCount = _countof(g_VkSampledTexture2DMethods);
@@ -2529,6 +2579,18 @@ static void GetIntrinsicMethods(ArBasicKind kind,
   case AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY:
     *intrinsics = g_VkSampledTexture2DMSArrayMethods;
     *intrinsicCount = _countof(g_VkSampledTexture2DMSArrayMethods);
+    break;
+  case AR_OBJECT_VK_SAMPLED_TEXTURECUBE:
+    *intrinsics = g_VkSampledTextureCUBEMethods;
+    *intrinsicCount = _countof(g_VkSampledTextureCUBEMethods);
+    break;
+  case AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY:
+    *intrinsics = g_VkSampledTextureCUBEArrayMethods;
+    *intrinsicCount = _countof(g_VkSampledTextureCUBEArrayMethods);
+    break;
+  case AR_OBJECT_VK_SAMPLED_TEXTURE3D:
+    *intrinsics = g_VkSampledTexture3DMethods;
+    *intrinsicCount = _countof(g_VkSampledTexture3DMethods);
     break;
 #endif
   case AR_OBJECT_HIT_OBJECT:
@@ -4135,10 +4197,15 @@ private:
         recordDecl = DeclareVkBufferPointerType(*m_context, m_vkNSDecl);
         recordDecl->setImplicit(true);
         m_vkBufferPointerTemplateDecl = recordDecl->getDescribedClassTemplate();
-      } else if (kind == AR_OBJECT_VK_SAMPLED_TEXTURE2D ||
+      } else if (kind == AR_OBJECT_VK_SAMPLED_TEXTURE1D ||
+                 kind == AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY ||
+                 kind == AR_OBJECT_VK_SAMPLED_TEXTURE2D ||
                  kind == AR_OBJECT_VK_SAMPLED_TEXTURE2D_ARRAY ||
                  kind == AR_OBJECT_VK_SAMPLED_TEXTURE2DMS ||
-                 kind == AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY) {
+                 kind == AR_OBJECT_VK_SAMPLED_TEXTURE2DMS_ARRAY ||
+                 kind == AR_OBJECT_VK_SAMPLED_TEXTURE3D ||
+                 kind == AR_OBJECT_VK_SAMPLED_TEXTURECUBE ||
+                 kind == AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY) {
         if (!m_vkNSDecl)
           continue;
         QualType float4Type =
@@ -5074,6 +5141,9 @@ public:
     DXASSERT_VALIDBASICKIND(BasicKind);
     switch (BasicKind) {
     case AR_OBJECT_TEXTURE1D:
+#ifdef ENABLE_SPIRV_CODEGEN
+    case AR_OBJECT_VK_SAMPLED_TEXTURE1D:
+#endif
       ResKind = DXIL::ResourceKind::Texture1D;
       ResClass = DXIL::ResourceClass::SRV;
       return true;
@@ -5083,6 +5153,9 @@ public:
       ResClass = DXIL::ResourceClass::UAV;
       return true;
     case AR_OBJECT_TEXTURE1D_ARRAY:
+#ifdef ENABLE_SPIRV_CODEGEN
+    case AR_OBJECT_VK_SAMPLED_TEXTURE1D_ARRAY:
+#endif
       ResKind = DXIL::ResourceKind::Texture1DArray;
       ResClass = DXIL::ResourceClass::SRV;
       return true;
@@ -5116,6 +5189,9 @@ public:
       ResClass = DXIL::ResourceClass::UAV;
       return true;
     case AR_OBJECT_TEXTURE3D:
+#ifdef ENABLE_SPIRV_CODEGEN
+    case AR_OBJECT_VK_SAMPLED_TEXTURE3D:
+#endif
       ResKind = DXIL::ResourceKind::Texture3D;
       ResClass = DXIL::ResourceClass::SRV;
       return true;
@@ -5125,10 +5201,16 @@ public:
       ResClass = DXIL::ResourceClass::UAV;
       return true;
     case AR_OBJECT_TEXTURECUBE:
+#ifdef ENABLE_SPIRV_CODEGEN
+    case AR_OBJECT_VK_SAMPLED_TEXTURECUBE:
+#endif
       ResKind = DXIL::ResourceKind::TextureCube;
       ResClass = DXIL::ResourceClass::SRV;
       return true;
     case AR_OBJECT_TEXTURECUBE_ARRAY:
+#ifdef ENABLE_SPIRV_CODEGEN
+    case AR_OBJECT_VK_SAMPLED_TEXTURECUBE_ARRAY:
+#endif
       ResKind = DXIL::ResourceKind::TextureCubeArray;
       ResClass = DXIL::ResourceClass::SRV;
       return true;
@@ -5286,8 +5368,8 @@ public:
   /// use for the signature, with the first being the return type.</remarks>
   bool MatchArguments(const IntrinsicDefIter &cursor, QualType objectType,
                       QualType objectElement, QualType functionTemplateTypeArg,
-                      ArrayRef<Expr *> Args, std::vector<QualType> *,
-                      size_t &badArgIdx);
+                      unsigned functionTemplateIntArg, ArrayRef<Expr *> Args,
+                      std::vector<QualType> *, size_t &badArgIdx);
 
   /// <summary>Validate object element on intrinsic to catch case like integer
   /// on Sample.</summary> <param name="tableName">Intrinsic function to
@@ -5334,6 +5416,19 @@ public:
         table, tableSize, table + tableSize,
         IntrinsicTableDefIter::CreateStart(m_intrinsicTables, typeName,
                                            nameIdentifier, argumentCount));
+  }
+
+  static unsigned GetIntegralTemplateArg(ASTContext &context,
+                                         const TemplateArgument &arg) {
+    if (arg.getKind() == TemplateArgument::Integral)
+      return arg.getAsIntegral().getZExtValue();
+    if (arg.getKind() == TemplateArgument::Expression) {
+      llvm::APSInt result;
+      Expr *expr = arg.getAsExpr();
+      if (expr != nullptr && expr->isIntegerConstantExpr(result, context))
+        return result.getZExtValue();
+    }
+    return 0;
   }
 
   bool AddOverloadedCallCandidates(UnresolvedLookupExpr *ULE,
@@ -5430,11 +5525,22 @@ public:
                  "otherwise g_MaxIntrinsicParamCount needs to be updated for "
                  "wider signatures");
 
+        QualType templateTypeArg;
+        unsigned templateIntArg = 0;
         std::vector<QualType> functionArgTypes;
         size_t badArgIdx;
+        if (ULE->hasExplicitTemplateArgs() && ULE->getNumTemplateArgs() >= 1) {
+          const TemplateArgumentLoc &TypeArgLoc = ULE->getTemplateArgs()[0];
+          if (TypeArgLoc.getArgument().getKind() == TemplateArgument::Type)
+            templateTypeArg = TypeArgLoc.getArgument().getAsType();
+          if (ULE->getNumTemplateArgs() >= 2)
+            templateIntArg = GetIntegralTemplateArg(
+                *m_context, ULE->getTemplateArgs()[1].getArgument());
+        }
+
         bool argsMatch =
-            MatchArguments(cursor, QualType(), QualType(), QualType(), Args,
-                           &functionArgTypes, badArgIdx);
+            MatchArguments(cursor, QualType(), QualType(), templateTypeArg,
+                           templateIntArg, Args, &functionArgTypes, badArgIdx);
         if (!functionArgTypes.size())
           return false;
 
@@ -6843,8 +6949,9 @@ bool HLSLExternalSource::IsValidObjectElement(LPCSTR tableName,
 
 bool HLSLExternalSource::MatchArguments(
     const IntrinsicDefIter &cursor, QualType objectType, QualType objectElement,
-    QualType functionTemplateTypeArg, ArrayRef<Expr *> Args,
-    std::vector<QualType> *argTypesVector, size_t &badArgIdx) {
+    QualType functionTemplateTypeArg, unsigned functionTemplateIntArg,
+    ArrayRef<Expr *> Args, std::vector<QualType> *argTypesVector,
+    size_t &badArgIdx) {
   const HLSL_INTRINSIC *pIntrinsic = *cursor;
   LPCSTR tableName = cursor.GetTableName();
   IntrinsicOp builtinOp = IntrinsicOp::Num_Intrinsics;
@@ -7336,7 +7443,45 @@ bool HLSLExternalSource::MatchArguments(
       if (i == 0 &&
           (builtinOp == hlsl::IntrinsicOp::IOP_Vkreinterpret_pointer_cast ||
            builtinOp == hlsl::IntrinsicOp::IOP_Vkstatic_pointer_cast)) {
-        pNewType = Args[0]->getType();
+        if (functionTemplateTypeArg.isNull()) {
+          badArgIdx = std::min(badArgIdx, i);
+          continue;
+        }
+
+        // Build BufferPointer<T, A> where T is the template type argument and
+        // A is the template alignment argument (or the alignment of the
+        // source pointer if none is given).
+        unsigned srcAlignment =
+            functionTemplateIntArg
+                ? functionTemplateIntArg
+                : hlsl::GetVKBufferPointerAlignment(Args[0]->getType());
+        TemplateArgument TemplateArgs[] = {
+            TemplateArgument(functionTemplateTypeArg),
+            TemplateArgument(*m_context,
+                             llvm::APSInt(llvm::APInt(32, srcAlignment)),
+                             m_context->UnsignedIntTy)};
+        void *InsertPos = nullptr;
+        ClassTemplateSpecializationDecl *Spec =
+            m_vkBufferPointerTemplateDecl->findSpecialization(
+                llvm::ArrayRef<TemplateArgument>(TemplateArgs, 2), InsertPos);
+        if (!Spec) {
+          Spec = ClassTemplateSpecializationDecl::Create(
+              *m_context, TagDecl::TagKind::TTK_Struct,
+              m_vkBufferPointerTemplateDecl->getDeclContext(), SourceLocation(),
+              SourceLocation(), m_vkBufferPointerTemplateDecl, TemplateArgs, 2,
+              nullptr);
+          m_vkBufferPointerTemplateDecl->AddSpecialization(Spec, InsertPos);
+          Spec->setImplicit(true);
+          DXVERIFY_NOMSG(
+              false ==
+              getSema()->InstantiateClassTemplateSpecialization(
+                  SourceLocation(), Spec,
+                  TemplateSpecializationKind::TSK_ImplicitInstantiation, true));
+        }
+
+        pNewType = m_context->getTemplateSpecializationType(
+            TemplateName(m_vkBufferPointerTemplateDecl), TemplateArgs, 2,
+            m_context->getTypeDeclType(Spec));
       } else {
         badArgIdx = std::min(badArgIdx, i);
       }
@@ -10096,6 +10241,7 @@ bool HLSLExternalSource::CanConvert(SourceLocation loc, Expr *sourceExpr,
       // We can only splat to target types that do not contain object/resource
       // types
       if (sourceSingleElementBuiltinType != nullptr &&
+          !m_sema->RequireCompleteType(loc, target, 0) &&
           hlsl::IsHLSLNumericOrAggregateOfNumericType(target)) {
         BuiltinType::Kind kind = sourceSingleElementBuiltinType->getKind();
         switch (kind) {
@@ -11072,11 +11218,18 @@ HLSLExternalSource::DeduceTemplateArgumentsForHLSL(
   QualType objectType = m_context->getTagDeclType(functionParentRecord);
 
   QualType functionTemplateTypeArg{};
-  if (ExplicitTemplateArgs != nullptr && ExplicitTemplateArgs->size() == 1) {
+  unsigned functionTemplateIntArg = 0;
+  if (ExplicitTemplateArgs != nullptr && ExplicitTemplateArgs->size() >= 1) {
     const TemplateArgument &firstTemplateArg =
         (*ExplicitTemplateArgs)[0].getArgument();
     if (firstTemplateArg.getKind() == TemplateArgument::ArgKind::Type)
       functionTemplateTypeArg = firstTemplateArg.getAsType();
+    if (ExplicitTemplateArgs->size() > 1) {
+      const TemplateArgument &secondTemplateArg =
+          (*ExplicitTemplateArgs)[1].getArgument();
+      functionTemplateIntArg =
+          GetIntegralTemplateArg(*m_context, secondTemplateArg);
+    }
   }
 
   // Handle subscript overloads.
@@ -11150,7 +11303,8 @@ HLSLExternalSource::DeduceTemplateArgumentsForHLSL(
   while (cursor != end) {
     size_t badArgIdx;
     if (!MatchArguments(cursor, objectType, objectElement,
-                        functionTemplateTypeArg, Args, &argTypes, badArgIdx)) {
+                        functionTemplateTypeArg, functionTemplateIntArg, Args,
+                        &argTypes, badArgIdx)) {
       ++cursor;
       continue;
     }
@@ -11193,8 +11347,9 @@ HLSLExternalSource::DeduceTemplateArgumentsForHLSL(
         if (!IsNull &&
             getSema()->RequireCompleteType(Loc, functionTemplateTypeArg, 0))
           return Sema::TemplateDeductionResult::TDK_Invalid;
-        if (IsNull || !hlsl::IsHLSLNumericOrAggregateOfNumericType(
-                          functionTemplateTypeArg)) {
+        if (IsNull || ExplicitTemplateArgs->size() > 1 ||
+            !hlsl::IsHLSLNumericOrAggregateOfNumericType(
+                functionTemplateTypeArg)) {
           getSema()->Diag(Loc, diag::err_hlsl_intrinsic_template_arg_numeric)
               << intrinsicName;
           DiagnoseTypeElements(
@@ -11924,8 +12079,18 @@ static bool CheckBarrierCall(Sema &S, FunctionDecl *FD, CallExpr *CE,
 }
 
 #ifdef ENABLE_SPIRV_CODEGEN
-static bool CheckVKBufferPointerCast(Sema &S, FunctionDecl *FD, CallExpr *CE,
-                                     bool isStatic) {
+static bool CheckVKBufferPointerCast(Sema &S, CallExpr *CE, bool isStatic) {
+  const auto *callee = dyn_cast<DeclRefExpr>(CE->getCallee()->IgnoreImpCasts());
+  if (callee && callee->hasExplicitTemplateArgs() &&
+      callee->getNumTemplateArgs() > 2) {
+    StringRef castName =
+        isStatic ? "static_pointer_cast" : "reinterpret_pointer_cast";
+    S.Diags.Report(CE->getExprLoc(),
+                   diag::err_template_arg_list_different_arity)
+        << /*too many*/ 1 << /*function template*/ 1 << castName;
+    return true;
+  }
+
   const Expr *argExpr = CE->getArg(0);
   QualType srcType = argExpr->getType();
   QualType destType = CE->getType();
@@ -12063,10 +12228,10 @@ void Sema::CheckHLSLFunctionCall(FunctionDecl *FDecl, CallExpr *TheCall) {
     break;
 #ifdef ENABLE_SPIRV_CODEGEN
   case hlsl::IntrinsicOp::IOP_Vkreinterpret_pointer_cast:
-    CheckVKBufferPointerCast(*this, FDecl, TheCall, false);
+    CheckVKBufferPointerCast(*this, TheCall, false);
     break;
   case hlsl::IntrinsicOp::IOP_Vkstatic_pointer_cast:
-    CheckVKBufferPointerCast(*this, FDecl, TheCall, true);
+    CheckVKBufferPointerCast(*this, TheCall, true);
     break;
 #endif
   default:
