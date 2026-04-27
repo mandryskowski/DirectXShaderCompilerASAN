@@ -9,8 +9,12 @@ on:
 
 jobs:
   build-windows:
-    name: Windows Native Build
+    name: Windows Native Build (${{ matrix.build_type }})
     runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
 
     steps:
       - name: Checkout repository
@@ -49,9 +53,7 @@ jobs:
             $cmake_lib_dir = $short_path -replace '\\', '/'
             
             echo "ASAN_LIB_DIR=$cmake_lib_dir" >> $env:GITHUB_ENV
-            
             echo "ASAN_DLL_DIR=$sanitizer_lib_dir" >> $env:GITHUB_ENV
-            
             echo "$sanitizer_lib_dir" >> $env:GITHUB_PATH
           } else {
             Write-Error "Could not find Clang Sanitizer libs at $sanitizer_lib_dir!"
@@ -63,22 +65,28 @@ jobs:
           cmake -B build --fresh `
             -C cmake/caches/PredefinedParams.cmake `
             -G Ninja `
-            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
             -DCMAKE_C_COMPILER=clang-cl `
             -DCMAKE_CXX_COMPILER=clang-cl `
             -DLLVM_ENABLE_WERROR=OFF `
             -DSPIRV_WERROR=OFF `
-            -DCMAKE_C_FLAGS_RELEASE="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /O2 /MD /DNDEBUG" `
-            -DCMAKE_CXX_FLAGS_RELEASE="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /O2 /MD /DNDEBUG" `
-            -DCMAKE_EXE_LINKER_FLAGS_RELEASE="/libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
-            -DCMAKE_SHARED_LINKER_FLAGS_RELEASE="/libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
+            -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreadedDLL" `
+            -DCMAKE_C_FLAGS="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /Z7" `
+            -DCMAKE_CXX_FLAGS="/w -fsanitize=address -fsanitize=undefined -fsanitize-recover=undefined /Z7" `
+            -DCMAKE_C_FLAGS_RELEASE="/O2 /MD /DNDEBUG" `
+            -DCMAKE_CXX_FLAGS_RELEASE="/O2 /MD /DNDEBUG" `
+            -DCMAKE_C_FLAGS_DEBUG="/Od /MD" `
+            -DCMAKE_CXX_FLAGS_DEBUG="/Od /MD" `
+            -DCMAKE_EXE_LINKER_FLAGS="/DEBUG /libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
+            -DCMAKE_SHARED_LINKER_FLAGS="/DEBUG /libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
             -DLLVM_PARALLEL_LINK_JOBS=1
 
       - name: Build DXCompiler and DXC
         env:
           ASAN_OPTIONS: "detect_leaks=0"
           UBSAN_OPTIONS: "halt_on_error=0"
-        run: cmake --build build --config Release --target dxcompiler --target dxc --parallel 2
+        run: cmake --build build --config ${{ matrix.build_type }} --target dxcompiler --target dxc --parallel 2
 
       - name: Download Official DXIL.dll
         shell: pwsh
@@ -107,10 +115,11 @@ jobs:
       - name: Upload DXC Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dxcompiler-sanitized
+          name: dxcompiler-sanitized-${{ matrix.build_type }}
           path: |
             build/bin/dxcompiler.dll
             build/bin/dxc.exe
+            build/bin/*.pdb
             build/bin/dxil.dll
             build/bin/clang_rt.asan_dynamic-x86_64.dll
           if-no-files-found: error
