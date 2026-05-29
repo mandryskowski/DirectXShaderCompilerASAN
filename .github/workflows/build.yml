@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-windows:
-    name: Windows Native Build (${{ matrix.build_type }}, Sanitizers: ${{ matrix.sanitizers }})
+    name: "Windows Native Build (${{ matrix.build_type }}, Sanitizers: ${{ matrix.sanitizers }})"
     runs-on: windows-2022
     strategy:
       fail-fast: false
