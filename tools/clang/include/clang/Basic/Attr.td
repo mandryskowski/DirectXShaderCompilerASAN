@@ -1196,6 +1196,17 @@ def HLSLHitObject : InheritableAttr {
   let Documentation = [Undocumented];
 }
 
+// HLSL Dynamic Resource Attribute
+// Marks the builtin `.Resource` / `.Sampler` placeholder record types used
+// for descriptor heap indexing (ResourceDescriptorHeap[i] /
+// SamplerDescriptorHeap[i]).
+def HLSLDynamicResource : InheritableAttr {
+  let Spellings = []; // No spellings!
+  let Args = [BoolArgument<"IsSampler">];
+  let Subjects = SubjectList<[CXXRecord]>;
+  let Documentation = [Undocumented];
+}
+
 // HLSL Parameter Attributes
 
 def HLSLMaxRecords : InheritableAttr {
@@ -2470,13 +2481,15 @@ def WarnUnused : InheritableAttr {
   let Documentation = [Undocumented];
 }
 
+// HLSL Change Begin - add C++11 spelling.
 def WarnUnusedResult : InheritableAttr {
-  let Spellings = [GCC<"warn_unused_result">,
+  let Spellings = [CXX11<"", "nodiscard", 2017>, GCC<"warn_unused_result">,
                    CXX11<"clang", "warn_unused_result">];
   let Subjects = SubjectList<[ObjCMethod, CXXRecord, FunctionLike], WarnDiag,
                              "ExpectedFunctionMethodOrClass">;
   let Documentation = [Undocumented];
 }
+// HLSL Change End - add C++11 spelling.
 
 def Weak : InheritableAttr {
   let Spellings = [GCC<"weak">];

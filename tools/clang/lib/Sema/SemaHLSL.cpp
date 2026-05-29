@@ -1170,12 +1170,14 @@ static const ArBasicKind g_RayQueryCT[] = {AR_OBJECT_RAY_QUERY,
                                            AR_BASIC_UNKNOWN};
 
 static const ArBasicKind g_LinAlgCT[] = {
+    AR_BASIC_LITERAL_FLOAT, AR_BASIC_FLOAT16,
     AR_BASIC_FLOAT32,       AR_BASIC_FLOAT32_PARTIAL_PRECISION,
-    AR_BASIC_FLOAT16,       AR_BASIC_INT32,
-    AR_BASIC_INT16,         AR_BASIC_UINT32,
-    AR_BASIC_UINT16,        AR_BASIC_INT8_4PACKED,
-    AR_BASIC_UINT8_4PACKED, AR_BASIC_NOCAST,
-    AR_BASIC_UNKNOWN};
+    AR_BASIC_FLOAT64,       AR_BASIC_LITERAL_INT,
+    AR_BASIC_UINT16,        AR_BASIC_UINT32,
+    AR_BASIC_UINT64,        AR_BASIC_INT16,
+    AR_BASIC_INT32,         AR_BASIC_INT64,
+    AR_BASIC_UINT8_4PACKED, AR_BASIC_INT8_4PACKED,
+    AR_BASIC_NOCAST,        AR_BASIC_UNKNOWN};
 
 static const ArBasicKind g_AccelerationStructCT[] = {
     AR_OBJECT_ACCELERATION_STRUCT, AR_BASIC_UNKNOWN};
@@ -15473,6 +15475,24 @@ bool Sema::DiagnoseHLSLDecl(Declarator &D, DeclContext *DC, Expr *BitWidth,
 
   if (!isFunction)
     hlslSource->WarnMinPrecision(qt, D.getLocStart());
+
+  // HLSL Change Starts - disallow pointers through __decltype.
+  if (!D.isInvalidType() && pType && !qt->isDependentType()) {
+    if (const auto *DTT = dyn_cast<DecltypeType>(pType)) {
+      QualType Underlying = DTT->getUnderlyingType();
+      if (Underlying->isPointerType()) {
+        Diag(D.getLocStart(), diag::err_hlsl_pointers_unsupported) << 0;
+        D.setInvalidType();
+        return false;
+      }
+      if (Underlying->isReferenceType()) {
+        Diag(D.getLocStart(), diag::err_hlsl_pointers_unsupported) << 1;
+        D.setInvalidType();
+        return false;
+      }
+    }
+  }
+  // HLSL Change Ends
 
   // Early checks - these are not simple attribution errors, but constructs that
   // are fundamentally unsupported,
