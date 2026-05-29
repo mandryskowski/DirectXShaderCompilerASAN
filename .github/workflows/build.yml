@@ -1,4 +1,4 @@
-name: Build DXC with ASan and UBSan
+name: Build DXC
 
 on:
   push:
@@ -9,12 +9,13 @@ on:
 
 jobs:
   build-windows:
-    name: Windows Native Build (${{ matrix.build_type }})
+    name: Windows Native Build (${{ matrix.build_type }}, Sanitizers: ${{ matrix.sanitizers }})
     runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
+        sanitizers: [asan-ubsan, none]
 
     steps:
       - name: Checkout repository
@@ -40,6 +41,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Setup Sanitizer Environment
+        if: matrix.sanitizers == 'asan-ubsan'
         shell: pwsh
         run: |
           $resource_dir = $(clang-cl --print-resource-dir).Trim()
@@ -60,7 +62,8 @@ jobs:
             exit 1
           }
 
-      - name: Configure CMake
+      - name: Configure CMake (Sanitized)
+        if: matrix.sanitizers == 'asan-ubsan'
         run: |
           cmake -B build --fresh `
             -C cmake/caches/PredefinedParams.cmake `
@@ -80,6 +83,29 @@ jobs:
             -DCMAKE_CXX_FLAGS_DEBUG="/Od /MD" `
             -DCMAKE_EXE_LINKER_FLAGS="/DEBUG /libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
             -DCMAKE_SHARED_LINKER_FLAGS="/DEBUG /libpath:${{ env.ASAN_LIB_DIR }} clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone-x86_64.lib /nodefaultlib:clang_rt.ubsan_standalone_cxx-x86_64.lib" `
+            -DLLVM_PARALLEL_LINK_JOBS=1
+
+      - name: Configure CMake (No Sanitizers)
+        if: matrix.sanitizers == 'none'
+        run: |
+          cmake -B build --fresh `
+            -C cmake/caches/PredefinedParams.cmake `
+            -G Ninja `
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} `
+            -DCMAKE_C_COMPILER=clang-cl `
+            -DCMAKE_CXX_COMPILER=clang-cl `
+            -DLLVM_ENABLE_WERROR=OFF `
+            -DSPIRV_WERROR=OFF `
+            -DCMAKE_POLICY_DEFAULT_CMP0091=NEW `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreadedDLL" `
+            -DCMAKE_C_FLAGS="/w /Z7" `
+            -DCMAKE_CXX_FLAGS="/w /Z7" `
+            -DCMAKE_C_FLAGS_RELEASE="/O2 /MD /DNDEBUG" `
+            -DCMAKE_CXX_FLAGS_RELEASE="/O2 /MD /DNDEBUG" `
+            -DCMAKE_C_FLAGS_DEBUG="/Od /MD" `
+            -DCMAKE_CXX_FLAGS_DEBUG="/Od /MD" `
+            -DCMAKE_EXE_LINKER_FLAGS="/DEBUG" `
+            -DCMAKE_SHARED_LINKER_FLAGS="/DEBUG" `
             -DLLVM_PARALLEL_LINK_JOBS=1
 
       - name: Build DXCompiler and DXC
@@ -108,11 +134,13 @@ jobs:
           }
 
       - name: Bundle LLVM ASan DLL
+        if: matrix.sanitizers == 'asan-ubsan'
         shell: pwsh
         run: |
           Copy-Item -Path "$env:ASAN_DLL_DIR\clang_rt.asan_dynamic-x86_64.dll" -Destination "build\bin\" -Force
 
-      - name: Upload DXC Artifacts
+      - name: Upload DXC Artifacts (Sanitized)
+        if: matrix.sanitizers == 'asan-ubsan'
         uses: actions/upload-artifact@v4
         with:
           name: dxcompiler-sanitized-${{ matrix.build_type }}
@@ -122,4 +150,16 @@ jobs:
             build/bin/*.pdb
             build/bin/dxil.dll
             build/bin/clang_rt.asan_dynamic-x86_64.dll
+          if-no-files-found: error
+
+      - name: Upload DXC Artifacts (No Sanitizers)
+        if: matrix.sanitizers == 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dxcompiler-${{ matrix.build_type }}
+          path: |
+            build/bin/dxcompiler.dll
+            build/bin/dxc.exe
+            build/bin/*.pdb
+            build/bin/dxil.dll
           if-no-files-found: error
