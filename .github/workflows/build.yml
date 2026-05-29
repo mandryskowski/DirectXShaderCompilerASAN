@@ -163,3 +163,34 @@ jobs:
             build/bin/*.pdb
             build/bin/dxil.dll
           if-no-files-found: error
+
+  release:
+    name: Create Release
+    needs: build-windows
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Zip artifacts
+        run: |
+          cd artifacts
+          for dir in */; do
+            cd "$dir"
+            zip -r "../../${dir%/}.zip" .
+            cd ..
+          done
+          cd ..
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.sha }}
+          name: Release ${{ github.sha }}
+          files: ./*.zip
+          generate_release_notes: true
